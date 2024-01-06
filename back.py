@@ -1,10 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 import bcrypt
-from flask_cors import CORS,cross_origin
+from flask_cors import CORS, cross_origin
 from flask_mail import Mail, Message
-
-
+import os
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -52,7 +51,8 @@ def signup():
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        user_id = collection.insert_one({'username': username,'email': email, 'password': hashed_password, 'role': role}).inserted_id
+        user_id = collection.insert_one({'username': username, 'email': email, 'password': hashed_password,
+                                         'role': role}).inserted_id
 
         return jsonify({'status': True, 'msg': 'Registered successfully', 'user_id': str(user_id)}), 201
 
@@ -78,9 +78,8 @@ def login():
         user = collection.find_one({'email': email, 'role': role})
 
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
-           
             return jsonify({'status': True, 'msg': 'Login successful'}), 200
-            
+
         else:
             return jsonify({'status': False, 'msg': 'Invalid email or password'}), 401
 
@@ -102,13 +101,13 @@ patient_data = mongo.db[patient_data_name]
 def receive_and_save_data():
     try:
         data = request.get_json()  # Get the JSON data from the request
-        
+
         if not data:
             return jsonify({'message': 'No data received'}), 400
 
-        # getting role from the data 
+        # getting role from the data
         role = data[0]
-      
+
         collection = admin_data if role == "admin" else patient_data
 
         # Ensure that "Sno" is unique and serves as the primary key
@@ -123,7 +122,7 @@ def receive_and_save_data():
 
         # Insert the received data into the MongoDB collection
         result = collection.insert_many(data[1])
-        
+
         return jsonify({'message': 'Data received and saved successfully'}), 200
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
@@ -135,7 +134,8 @@ def contact():
         data = request.get_json()
 
         # Send email with field names
-        msg = Message('New Contact Form Submission', sender=data['email'], recipients=['nani011618@gmail.com'])
+        msg = Message('New Contact Form Submission', sender=data['email'],
+                      recipients=['nani011618@gmail.com'])
         msg.body = f"Name: {data['first_name']} {data['last_name']}\nEmail: {data['email']}\nMessage: {data['message']}\n\nRaw Form Data:\n{data}"
 
         mail.send(msg)
@@ -146,4 +146,4 @@ def contact():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
